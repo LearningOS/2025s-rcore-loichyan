@@ -1,6 +1,6 @@
 .*/*
 !.github/*
-!.vscode/settings.json
+!.vscode/*
 .idea
 Cargo.lock
 target
