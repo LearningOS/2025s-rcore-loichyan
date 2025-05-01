@@ -137,6 +137,11 @@ impl TaskManager {
     }
 }
 
+/// Returns the current active task's ID.
+pub fn get_current_task_id() -> usize {
+    TASK_MANAGER.inner.exclusive_access().current_task
+}
+
 /// Run the first task in task list.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
