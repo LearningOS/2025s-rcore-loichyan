@@ -35,15 +35,15 @@ DISASM ?= -x
 # Run usertests or usershell
 TEST ?=
 
-build: env $(KERNEL_BIN) fs-img 
+build: env $(KERNEL_BIN) fs-img
 
 env:
-ifeq ($(OFFLINE),)
-	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
-	cargo install cargo-binutils
-	rustup component add rust-src
-	rustup component add llvm-tools-preview
-endif
+# ifeq ($(OFFLINE),)
+# 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
+# 	cargo install cargo-binutils
+# 	rustup component add rust-src
+# 	rustup component add llvm-tools-preview
+# endif
 
 $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
@@ -72,7 +72,17 @@ disasm-vim: kernel
 run: build run-inner
 
 run-inner:
-	@qemu-system-riscv64 \
+	qemu-system-riscv64 \
+		-machine virt \
+		-nographic \
+		-bios $(BOOTLOADER) \
+		-device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
+		-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+run-debug: build
+	qemu-system-riscv64 \
+		-S -gdb tcp::1234 \
 		-machine virt \
 		-nographic \
 		-bios $(BOOTLOADER) \
