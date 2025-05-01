@@ -33,12 +33,12 @@ DISASM ?= -x
 build: env $(KERNEL_BIN)
 
 env:
-ifeq ($(OFFLINE),)
-	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
-	cargo install cargo-binutils
-	rustup component add rust-src
-	rustup component add llvm-tools-preview
-endif
+# ifeq ($(OFFLINE),)
+# 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
+# 	cargo install cargo-binutils
+# 	rustup component add rust-src
+# 	rustup component add llvm-tools-preview
+# endif
 
 $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
@@ -62,7 +62,15 @@ disasm-vim: kernel
 run: run-inner
 
 run-inner: build
-	@qemu-system-riscv64 \
+	qemu-system-riscv64 \
+		-machine virt \
+		-nographic \
+		-bios $(BOOTLOADER) \
+		-device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA)
+
+run-debug: build
+	qemu-system-riscv64 \
+		-S -gdb tcp::1234 \
 		-machine virt \
 		-nographic \
 		-bios $(BOOTLOADER) \
