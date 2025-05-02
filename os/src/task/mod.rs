@@ -18,6 +18,7 @@ use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
+use core::cell::RefMut;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -153,6 +154,17 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+}
+
+/// Returns the current task ID.
+pub fn get_current_task_id() -> usize {
+    TASK_MANAGER.inner.exclusive_access().current_task
+}
+
+/// Returns the current task.
+pub fn get_current_task() -> RefMut<'static, TaskControlBlock> {
+    let tm = TASK_MANAGER.inner.exclusive_access();
+    RefMut::map(tm, |tm| &mut tm.tasks[tm.current_task])
 }
 
 /// Run the first task in task list.

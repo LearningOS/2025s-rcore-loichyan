@@ -233,6 +233,22 @@ impl MemorySet {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.page_table.translate(vpn)
     }
+    /// Translate a virtual address to its physical address with the expected
+    /// permission.
+    pub fn translate_addr(&self, addr: VirtAddr, perm: MapPermission) -> Option<PhysAddr> {
+        let pte = self.page_table.translate(addr.floor())?;
+        if !pte
+            .flags()
+            .contains(PTEFlags::from_bits(perm.bits()).unwrap())
+        {
+            return None;
+        }
+        self.page_table.translate_va(addr)
+    }
+    /// Same as `translate_addr`, but with user permission required.
+    pub fn translate_user_addr(&self, addr: VirtAddr, perm: MapPermission) -> Option<PhysAddr> {
+        self.translate_addr(addr, perm | MapPermission::U)
+    }
     /// shrink the area to new_end
     #[allow(unused)]
     pub fn shrink_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {

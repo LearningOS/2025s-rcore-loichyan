@@ -1,6 +1,6 @@
 //! Implementation of [`PageTableEntry`] and [`PageTable`].
 
-use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+use super::*;
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
@@ -81,6 +81,7 @@ pub struct PageTable {
 /// Assume that it won't oom when creating/mapping.
 impl PageTable {
     /// Create a new page table
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
         PageTable {
@@ -151,6 +152,19 @@ impl PageTable {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.find_pte(vpn).map(|pte| *pte)
     }
+
+    /// get the physical address from the virtual address
+    pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        self.find_pte(va.clone().floor()).map(|pte| {
+            //println!("translate_va:va = {:?}", va);
+            let aligned_pa: PhysAddr = pte.ppn().into();
+            //println!("translate_va:pa_align = {:?}", aligned_pa);
+            let offset = va.page_offset();
+            let aligned_pa_usize: usize = aligned_pa.into();
+            (aligned_pa_usize + offset).into()
+        })
+    }
+
     /// get the token from the page table
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0

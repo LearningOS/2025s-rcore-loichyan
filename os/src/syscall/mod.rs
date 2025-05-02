@@ -28,11 +28,21 @@ const SYSCALL_TRACE: usize = 410;
 mod fs;
 mod process;
 
+use crate::sync::UPSafeCell;
+use alloc::collections::BTreeMap;
 use fs::*;
+use lazy_static::lazy_static;
 use process::*;
+
+lazy_static! {
+    static ref TRACE_INFOS: UPSafeCell<BTreeMap<usize, BTreeMap<usize, usize>>> =
+        unsafe { UPSafeCell::new(<_>::default()) };
+}
 
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    trace_add(syscall_id);
+
     match syscall_id {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
@@ -44,4 +54,15 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_SBRK => sys_sbrk(args[0] as i32),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
+}
+
+fn trace_add(syscall_id: usize) {
+    let mut trace_infos = TRACE_INFOS.exclusive_access();
+    let task_id = crate::task::get_current_task_id();
+    let count = trace_infos
+        .entry(task_id)
+        .or_default()
+        .entry(syscall_id)
+        .or_default();
+    *count += 1;
 }
