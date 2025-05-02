@@ -1,5 +1,5 @@
 //! Process management syscalls
-use crate::mm::{MapPermission, VirtAddr};
+use crate::mm::{available_memory, MapPermission, VirtAddr};
 use crate::timer::get_time_us;
 use crate::{
     fs::{open_file, OpenFlags},
@@ -125,22 +125,58 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     0
 }
 
-/// YOUR JOB: Implement mmap.
-pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+bitflags! {
+    struct MmapFlags: u8 {
+        const R = 1 << 0;
+        const W = 1 << 1;
+        const X = 1 << 2;
+    }
 }
 
-/// YOUR JOB: Implement munmap.
-pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
+pub fn sys_mmap(start: usize, len: usize, flags: usize) -> isize {
+    trace!("kernel: sys_mmap");
+    let start_va = VirtAddr(start);
+    if !start_va.aligned() {
+        return -1;
+    }
+    if len > available_memory() {
+        return -1;
+    }
+    if flags == 0 {
+        return -1;
+    }
+    let Some(flags) = MmapFlags::from_bits(flags as u8) else {
+        return -1;
+    };
+
+    let task = current_task().unwrap();
+    let uspace = &mut task.inner_exclusive_access().memory_set;
+    let end_va = VirtAddr(start + len);
+    if uspace.contains_any(start_va, end_va) {
+        return -1;
+    }
+
+    uspace.insert_framed_area(
+        start_va,
+        end_va,
+        MapPermission::from_bits(flags.bits() << 1).unwrap() | MapPermission::U,
     );
-    -1
+    0
+}
+
+pub fn sys_munmap(start: usize, len: usize) -> isize {
+    trace!("kernel: sys_munmap");
+    let start_va = VirtAddr(start);
+    if !start_va.aligned() {
+        return -1;
+    }
+    let task = current_task().unwrap();
+    let uspace = &mut task.inner_exclusive_access().memory_set;
+    if !uspace.find_area(start_va).map_or(false, |a| a.len() >= len) {
+        return -1;
+    }
+    uspace.remove_area(start_va);
+    0
 }
 
 /// change data segment size
