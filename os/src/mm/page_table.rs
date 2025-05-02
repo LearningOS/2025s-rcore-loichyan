@@ -27,7 +27,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 /// page table entry structure
 pub struct PageTableEntry {
@@ -168,6 +168,11 @@ impl PageTable {
     /// get the token from the page table
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
+    }
+
+    /// Returns whether the given page is allocated in this table.
+    pub fn contains(&self, vpn: VirtPageNum) -> bool {
+        self.find_pte(vpn).map_or(false, |pte| pte.is_valid())
     }
 }
 
