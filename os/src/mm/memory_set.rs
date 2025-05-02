@@ -316,6 +316,38 @@ impl MemorySet {
             false
         }
     }
+
+    fn find_area_index(&self, start_va: VirtAddr) -> Option<usize> {
+        let vpn = VirtPageNum::from(start_va);
+        self.areas
+            .iter()
+            .enumerate()
+            .find(|(_, area)| area.starts_with(vpn))
+            .map(|(i, _)| i)
+    }
+    /// Returns the mapped memory area starts with the given address.
+    pub fn find_area(&self, start_va: VirtAddr) -> Option<&MapArea> {
+        self.find_area_index(start_va).map(|i| &self.areas[i])
+    }
+    /// Removes the mapped memory area starts with the given address. Returns
+    /// true if the removal succeeds.
+    pub fn remove_area(&mut self, start_va: VirtAddr) -> bool {
+        let Some(i) = self.find_area_index(start_va) else {
+            return false;
+        };
+        let area = &mut self.areas[i];
+        area.unmap(&mut self.page_table);
+        true
+    }
+    /// Returns whether the any region of the given memory area is occupied.
+    pub fn contains_any(&self, start: VirtAddr, end: VirtAddr) -> bool {
+        for vpn in VPNRange::new(start.floor(), end.ceil()) {
+            if self.page_table.contains(vpn) {
+                return true;
+            }
+        }
+        false
+    }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {
@@ -415,6 +447,14 @@ impl MapArea {
             }
             current_vpn.step();
         }
+    }
+
+    /// Returns whether this area starts with the given virtual page.
+    pub fn starts_with(&self, vpn: VirtPageNum) -> bool {
+        self.vpn_range.get_start() == vpn
+    }
+    pub fn len(&self) -> usize {
+        (self.vpn_range.get_end().0 - self.vpn_range.get_start().0) * PAGE_SIZE
     }
 }
 

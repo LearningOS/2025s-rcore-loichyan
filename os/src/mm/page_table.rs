@@ -160,6 +160,11 @@ impl PageTable {
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }
+
+    /// Returns whether the given page is allocated in this table.
+    pub fn contains(&self, vpn: VirtPageNum) -> bool {
+        self.find_pte(vpn).map_or(false, |pte| pte.is_valid())
+    }
 }
 
 /// Translate&Copy a ptr[u8] array with LENGTH len to a mutable u8 Vec through page table

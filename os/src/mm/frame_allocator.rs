@@ -1,7 +1,7 @@
 //! Implementation of [`FrameAllocator`] which
 //! controls all the frames in the operating system.
 use super::{PhysAddr, PhysPageNum};
-use crate::config::MEMORY_END;
+use crate::config::{MEMORY_END, PAGE_SIZE};
 use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
@@ -101,6 +101,12 @@ pub fn init_frame_allocator() {
         PhysAddr::from(ekernel as usize).ceil(),
         PhysAddr::from(MEMORY_END).floor(),
     );
+}
+
+/// Returns all available memory in bytes.
+pub fn available_memory() -> usize {
+    let frmalo = FRAME_ALLOCATOR.exclusive_access();
+    (frmalo.end - frmalo.current + frmalo.recycled.len()) * PAGE_SIZE
 }
 
 /// Allocate a physical page frame in FrameTracker style
