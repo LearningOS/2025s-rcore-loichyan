@@ -17,7 +17,8 @@ mod context;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT_BASE};
 use crate::syscall::syscall;
 use crate::task::{
-    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next,
+    current_task, current_trap_cx, current_user_token, exit_current_and_run_next,
+    suspend_current_and_run_next,
 };
 use crate::timer::set_next_trigger;
 use core::arch::{asm, global_asm};
@@ -78,8 +79,9 @@ pub fn trap_handler() -> ! {
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
             println!(
-                "[kernel] trap_handler:  {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+                "[kernel] trap_handler:  {:?} in application '{}', bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
                 scause.cause(),
+                current_task().unwrap().name,
                 stval,
                 current_trap_cx().sepc,
             );
@@ -87,7 +89,10 @@ pub fn trap_handler() -> ! {
             exit_current_and_run_next(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, kernel killed it.");
+            println!(
+                "[kernel] IllegalInstruction in application '{}', kernel killed it.",
+                current_task().unwrap().name,
+            );
             // illegal instruction exit code
             exit_current_and_run_next(-3);
         }

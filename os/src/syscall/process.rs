@@ -198,7 +198,7 @@ pub fn sys_spawn(path: *const u8) -> isize {
     let Some(data) = get_app_data_by_name(path.as_str()) else {
         return -1;
     };
-    let new_task = current_task.spawn(data);
+    let new_task = current_task.spawn(path.as_str(), data);
     add_task(new_task.clone());
     new_task.pid.0 as isize
 }
