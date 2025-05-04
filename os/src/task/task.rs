@@ -261,6 +261,15 @@ impl TaskControlBlock {
             None
         }
     }
+
+    /// Starts a new child process with the given executable.
+    pub fn spawn(self: &Arc<Self>, elf_data: &[u8]) -> Arc<Self> {
+        let new_task = Arc::new(Self::new(elf_data));
+        new_task.inner_exclusive_access().parent = Some(Arc::downgrade(self));
+        let mut parent_inner = self.inner_exclusive_access();
+        parent_inner.children.push(new_task.clone());
+        new_task
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
