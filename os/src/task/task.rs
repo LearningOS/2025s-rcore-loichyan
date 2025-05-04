@@ -44,6 +44,9 @@ impl TaskControlBlock {
 }
 
 pub struct TaskControlBlockInner {
+    pub priority: usize,
+    pub stride: usize,
+
     /// The physical page number of the frame where the trap context is placed
     pub trap_cx_ppn: PhysPageNum,
 
@@ -123,6 +126,8 @@ impl TaskControlBlock {
             name: name.to_owned(),
             inner: unsafe {
                 UPSafeCell::new(TaskControlBlockInner {
+                    priority: 16,
+                    stride: 0,
                     trap_cx_ppn,
                     base_size: user_sp,
                     task_cx: TaskContext::goto_trap_return(kernel_stack_top),
@@ -212,6 +217,8 @@ impl TaskControlBlock {
             name: self.name.clone(),
             inner: unsafe {
                 UPSafeCell::new(TaskControlBlockInner {
+                    priority: parent_inner.priority,
+                    stride: parent_inner.stride,
                     trap_cx_ppn,
                     base_size: parent_inner.base_size,
                     task_cx: TaskContext::goto_trap_return(kernel_stack_top),
