@@ -194,10 +194,11 @@ pub fn sys_spawn(path: *const u8) -> isize {
     let current_task = current_task().unwrap();
     let token = current_user_token();
     let path = translated_str(token, path);
-    let Some(data) = get_app_data_by_name(path.as_str()) else {
+    let Some(inode) = open_file(path.as_str(), OpenFlags::RDONLY) else {
         return -1;
     };
-    let new_task = current_task.spawn(data);
+    let data = inode.read_all();
+    let new_task = current_task.spawn(path.as_str(), &data);
     add_task(new_task.clone());
     new_task.pid.0 as isize
 }

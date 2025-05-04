@@ -6,6 +6,8 @@ use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
+use alloc::borrow::ToOwned;
+use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
 use alloc::vec::Vec;
@@ -21,6 +23,9 @@ pub struct TaskControlBlock {
 
     /// Kernel stack corresponding to PID
     pub kernel_stack: KernelStack,
+
+    /// Task's executable name.
+    pub name: String,
 
     /// Mutable
     inner: UPSafeCell<TaskControlBlockInner>,
@@ -100,7 +105,7 @@ impl TaskControlBlock {
     /// Create a new process
     ///
     /// At present, it is only used for the creation of initproc
-    pub fn new(elf_data: &[u8]) -> Self {
+    pub fn new(name: &str, elf_data: &[u8]) -> Self {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
@@ -115,6 +120,7 @@ impl TaskControlBlock {
         let task_control_block = Self {
             pid: pid_handle,
             kernel_stack,
+            name: name.to_owned(),
             inner: unsafe {
                 UPSafeCell::new(TaskControlBlockInner {
                     trap_cx_ppn,
@@ -203,6 +209,7 @@ impl TaskControlBlock {
         let task_control_block = Arc::new(TaskControlBlock {
             pid: pid_handle,
             kernel_stack,
+            name: self.name.clone(),
             inner: unsafe {
                 UPSafeCell::new(TaskControlBlockInner {
                     trap_cx_ppn,
@@ -263,8 +270,8 @@ impl TaskControlBlock {
     }
 
     /// Starts a new child process with the given executable.
-    pub fn spawn(self: &Arc<Self>, elf_data: &[u8]) -> Arc<Self> {
-        let new_task = Arc::new(Self::new(elf_data));
+    pub fn spawn(self: &Arc<Self>, name: &str, elf_data: &[u8]) -> Arc<Self> {
+        let new_task = Arc::new(Self::new(name, elf_data));
         new_task.inner_exclusive_access().parent = Some(Arc::downgrade(self));
         let mut parent_inner = self.inner_exclusive_access();
         parent_inner.children.push(new_task.clone());
