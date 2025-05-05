@@ -16,3 +16,14 @@ pub use block_dev::BlockDevice;
 pub use efs::EasyFileSystem;
 use layout::*;
 pub use vfs::Inode;
+
+/// The stat of a inode
+#[repr(C)]
+pub struct Stat {
+    /// inode number
+    pub ino: u64,
+    /// file type and mode
+    pub is_file: bool,
+    /// number of hard links
+    pub nlink: u32,
+}

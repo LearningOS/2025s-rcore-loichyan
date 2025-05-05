@@ -1,6 +1,6 @@
 //! File and filesystem-related syscalls
-use crate::fs::{link_file, open_file, unlink_file, OpenFlags, Stat};
-use crate::mm::{translated_byte_buffer, translated_str, UserBuffer};
+use crate::fs::{link_file, open_file, unlink_file, File, OpenFlags, Stat};
+use crate::mm::{translated_byte_buffer, translated_refmut, translated_str, UserBuffer};
 use crate::task::{current_task, current_user_token};
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -75,13 +75,20 @@ pub fn sys_close(fd: usize) -> isize {
     0
 }
 
-/// YOUR JOB: Implement fstat.
-pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
+    trace!("kernel:pid[{}] sys_fstat", current_task().unwrap().pid.0);
+    let task = current_task().unwrap();
+    let token = current_user_token();
+
+    let inner = task.inner_exclusive_access();
+    if fd >= inner.fd_table.len() {
+        return -1;
+    }
+    let Some(stat) = inner.fd_table[fd].as_deref().map(File::get_stat).flatten() else {
+        return -1;
+    };
+    *translated_refmut(token, st) = stat;
+    0
 }
 
 pub fn sys_linkat(old_name: *const u8, new_name: *const u8) -> isize {
