@@ -34,6 +34,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run tests
         run: |
+          # See <https://github.com/LearningOS/os-rcore-classroom-2025s-rcore-rCore-Camp-Code-2025S/pull/8>
+          unset RUSTUP_DIST_SERVER
+          unset RUSTUP_UPDATE_ROOT
+          unset CARGO_HTTP_MULTIPLEXING
+          # 删除或重置全局配置
+          rm ${CARGO_HOME}/config.toml || true
+          rm -rf rm ${CARGO_HOME}/registry/* || true
+
           qemu-system-riscv64 --version
           rustup target add riscv64gc-unknown-none-elf
           git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
@@ -58,7 +66,7 @@ jobs:
       - uses: actions/checkout@v3
         continue-on-error: true
         with:
-          ref: 'gh-pages'
+          ref: "gh-pages"
       - name: Save Log File
         uses: yfblock/multi-rank-log@main
         with:
