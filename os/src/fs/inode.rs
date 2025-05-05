@@ -125,6 +125,16 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     }
 }
 
+/// Creates a link of an existing disk node.
+pub fn link_file(oldname: &str, newname: &str) -> bool {
+    ROOT_INODE.create_link(oldname, newname).is_some()
+}
+
+/// Removes a link of an existing disk node.
+pub fn unlink_file(name: &str) -> bool {
+    ROOT_INODE.remove_link(name).is_some()
+}
+
 impl File for OSInode {
     fn readable(&self) -> bool {
         self.readable
